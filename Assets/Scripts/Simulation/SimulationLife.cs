@@ -31,22 +31,22 @@ public partial class SimulationManager
 
             Vector2 forwardDirection = AngleToDirection(agent.angle);
 
-            //if (hungry)
-            //{
-            //Vector2 leftDirection = RotateDirection(forwardDirection, -dna.sensorAngle);
-            //Vector2 rightDirection = RotateDirection(forwardDirection, dna.sensorAngle);
-            //
-            // leftSense = SenseEnvironment(agent, dna, leftDirection);
-            //float forwardSense = SenseEnvironment(agent, dna, forwardDirection);
-            //float rightSense = SenseEnvironment(agent, dna, rightDirection);
-            //
-            //if (leftSense > forwardSense && leftSense > rightSense)
-            //agent.angle -= dna.turnSpeed * dt;
-            //    else if (rightSense > forwardSense && rightSense > leftSense)
-            //agent.angle += dna.turnSpeed * dt;
-            //
-            //forwardDirection = AngleToDirection(agent.angle);
-            //}
+            if (hungry)
+            {
+                Vector2 leftDirection = RotateDirection(forwardDirection, -dna.sensorAngle);
+                Vector2 rightDirection = RotateDirection(forwardDirection, dna.sensorAngle);
+
+                float leftSense = SenseEnvironment(agent, dna, leftDirection);
+                float forwardSense = SenseEnvironment(agent, dna, forwardDirection);
+                float rightSense = SenseEnvironment(agent, dna, rightDirection);
+
+                if (leftSense > forwardSense && leftSense > rightSense)
+                    agent.angle -= dna.turnSpeed * dt;
+                else if (rightSense > forwardSense && rightSense > leftSense)
+                    agent.angle += dna.turnSpeed * dt;
+
+                forwardDirection = AngleToDirection(agent.angle);
+            }
 
             Vector2 oldPosition = agent.position;
             agent.position += forwardDirection * dna.speed * activityMultiplier * dt;
@@ -63,14 +63,14 @@ public partial class SimulationManager
             DepositTrail(agent, dna, dt, trailActivityMultiplier);
             DepositDanger(agent, dna, dt);
 
-            //TryAttackPrey(ref agent, dna, dt);
-            //EatCorpse(ref agent, dna, dt);
-            //EatFood(ref agent, dt);
+            TryAttackPrey(ref agent, dna, dt);
+            EatCorpse(ref agent, dna, dt);
+            EatFood(ref agent, dt);
 
             agent.energy -= dna.movementEnergyCost * activityMultiplier * dt;
             agent.energy -= dna.trailEnergyCost * activityMultiplier * dt;
 
-            //TryReproduce(ref agent, dna);
+            TryReproduce(ref agent, dna);
 
             agent.age += dt;
 

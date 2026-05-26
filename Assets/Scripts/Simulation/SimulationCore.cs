@@ -64,6 +64,11 @@ public partial class SimulationManager
 
         foodGrid = new float[gridWidth, gridHeight, foodTypes.Length];
         InitializeFood();
+        InitializeFoodRenderer();
+        InitializeTrailRenderer();
+        InitializeObstacleRenderer();
+        InitializeAgentTextureRenderer();
+        //InitializeAgentRenderer();
         dangerGrid = new float[gridWidth, gridHeight];
         nextDangerGrid = new float[gridWidth, gridHeight];
         InitializeAgents();

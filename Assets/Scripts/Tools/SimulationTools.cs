@@ -135,6 +135,7 @@ public partial class SimulationManager
         ApplyBrush(worldPos, radius, (x, y, falloff) =>
         {
             obstacleGrid[x, y] = true;
+            obstaclesDirty = true;
 
             for (int f = 0; f < foodTypes.Length; f++)
                 foodGrid[x, y, f] = 0f;
@@ -149,6 +150,7 @@ public partial class SimulationManager
         ApplyBrush(worldPos, radius, (x, y, falloff) =>
         {
             obstacleGrid[x, y] = false;
+            obstaclesDirty = true;
 
             for (int f = 0; f < foodTypes.Length; f++)
                 foodGrid[x, y, f] = 0f;

@@ -224,6 +224,7 @@ public partial class SimulationManager : MonoBehaviour
     private int usedPreyCellCount = 0;
     private bool[,] preyCellUsed;
 
+
     [Header("Energy Economy")]
     public float sunlightEnergyPerSecond = 500f;
     public float maxEcoEnergy = 600000f;
@@ -253,10 +254,10 @@ public partial class SimulationManager : MonoBehaviour
     private float[,] nextDangerGrid;
 
     [Header("Debug Visuals")]
-    public bool showAgents = true;
-    public bool showFood = true;
-    public bool showTrails = true;
-    public bool showObstacles = true;
+    public bool showAgents = false;
+    public bool showFood = false;
+    public bool showTrails = false;
+    public bool showObstacles = false;
 
     public float agentDrawSize = 0.06f;
     public float foodAlpha = 0.18f;
@@ -461,6 +462,12 @@ public partial class SimulationManager : MonoBehaviour
                 }
             }
 
+            UpdateFoodTexture();
+            UpdateTrailTexture();
+            UpdateObstacleTexture();
+            UpdateAgentTexture();
+
+
             perfRefreshTimer += Time.unscaledDeltaTime;
 
             if (perfRefreshTimer >= perfRefreshInterval)
@@ -478,6 +485,7 @@ public partial class SimulationManager : MonoBehaviour
                 perfRefreshTimer = 0f;
             }
         }
+        
     }
 
 }

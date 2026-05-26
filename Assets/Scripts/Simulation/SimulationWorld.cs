@@ -310,6 +310,7 @@ public partial class SimulationManager
             obstacleGrid = new bool[gridWidth, gridHeight];
 
         GenerateRandomObstacleBlobs();
+        obstaclesDirty = true;
 
         for (int x = 0; x < gridWidth; x++)
         {
@@ -331,6 +332,7 @@ public partial class SimulationManager
     {
         obstacleGrid = new bool[gridWidth, gridHeight];
         InitializeObstacles();
+        obstaclesDirty = true;
 
         for (int x = 0; x < gridWidth; x++)
         {
