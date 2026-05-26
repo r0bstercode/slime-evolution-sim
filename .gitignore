@@ -1,0 +1,41 @@
+Sehr gut 😄 fast da.
+
+Problem:
+
+Deine .gitignore ist zu kurz/unvollständig, deshalb sieht Git noch:
+
+.vs/
+ProfilerCaptures/
+Terrarium.slnx
+
+Kein Drama.
+
+Öffne .gitignore und ersetze den Inhalt komplett mit:
+
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+UserSettings/
+
+MemoryCaptures/
+ProfilerCaptures/
+
+.vs/
+.vscode/
+
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+
+.DS_Store
+Thumbs.db

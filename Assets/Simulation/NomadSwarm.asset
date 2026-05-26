@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 28eb0adf1108c594a9e5fa9773d4b3f4, type: 3}
+  m_Name: NomadSwarm
+  m_EditorClassIdentifier: Assembly-CSharp::SpeciesDNA
+  speed: 2.2
+  turnSpeed: 150
+  sensorDistance: 5
+  sensorAngle: 45
+  trailStrength: 1.4
+  ownTrailAttraction: 1.4
+  foreignTrailRepulsion: 0.15
+  maxAge: 1200
+  startEnergy: 50
+  startingPopulation: 500
+  movementEnergyCost: 0.35
+  trailEnergyCost: 0.02
+  eatPauseMin: 0.05
+  eatPauseMax: 0.15
+  greenPreference: 0
+  brownPreference: 0
+  corpsePreference: 1.2
+  preyPreference: 1.5
+  reproductionThreshold: 180
+  mutationChance: 0.02
+  minReproductionAge: 30
+  speciesColor: {r: 0.5450981, g: 0.2705882, b: 0.07450981, a: 1}

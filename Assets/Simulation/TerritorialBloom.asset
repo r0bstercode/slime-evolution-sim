@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 28eb0adf1108c594a9e5fa9773d4b3f4, type: 3}
+  m_Name: TerritorialBloom
+  m_EditorClassIdentifier: Assembly-CSharp::SpeciesDNA
+  speed: 1
+  turnSpeed: 90
+  sensorDistance: 7
+  sensorAngle: 35
+  trailStrength: 1.8
+  ownTrailAttraction: 1
+  foreignTrailRepulsion: 1.2
+  maxAge: 1500
+  startEnergy: 40
+  startingPopulation: 1500
+  movementEnergyCost: 0.09
+  trailEnergyCost: 0.05
+  eatPauseMin: 0.05
+  eatPauseMax: 0.15
+  greenPreference: 0.5
+  brownPreference: 2
+  corpsePreference: 1
+  preyPreference: 0
+  reproductionThreshold: 100
+  mutationChance: 0.02
+  minReproductionAge: 20
+  speciesColor: {r: 0.3333333, g: 0.4196079, b: 0.1843137, a: 1}
