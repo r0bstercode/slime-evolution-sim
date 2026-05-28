@@ -108,13 +108,6 @@ public partial class SimulationManager : MonoBehaviour
         return 50;
     }
 
-
-
-    [Header("Death Recycling")]
-    public float deathDecayConversion = 0.8f;
-    public float decayGrowthBoost = 0.02f;
-    public float brownDecayLoss = 0.02f;
-
     [Header("Random Obstacles")]
     public bool randomObstaclesEnabled = true;
     public int randomObstacleBlobCount = 12;
@@ -173,14 +166,8 @@ public partial class SimulationManager : MonoBehaviour
 
     private Corpse[] corpses;
 
-    [Header("Corpse Energy")]
-    public float corpseBodyEnergyMultiplier = 0.5f;
-    public float minimumCorpseEnergy = 20f;
-
     [Header("Corpse Feeding")]
     public float corpseEatAmount = 50f;
-    public float corpseEnergyValue = 1f;
-    public float corpseScavengerThreshold = 1.5f;
 
     [Header("Mutation Budget")]
     public float mutationCooldownPerSpecies = 5f;
@@ -199,13 +186,9 @@ public partial class SimulationManager : MonoBehaviour
 
     [Header("Predation")]
     public float preyScavengerThreshold = 1.5f;
-    public float preySmellRadiusMultiplier = 1.5f;
 
     [Header("Predator Attack")]
     public float preyAttackRange = 0.6f;
-    public float preyAttackAmount = 25f;
-    public float preyKillThreshold = 5f;
-    public float preyEnergyValue = 0.8f;
     public float preyAttackEnergyCost = 0.2f;
     public float preyAttackDamage = 5f;
     public float preyAttackSlowDuration = 2f;
@@ -220,13 +203,9 @@ public partial class SimulationManager : MonoBehaviour
     [Header("Food Grid")]
     public float initialFoodAmount = 0.45f;
     public float foodGrowthRate = 0.02f;
-    public float foodGain = 25f;
     public float foodEatAmount = 10f;
     private float[,,] preyGrid;
     private float[,] totalPreyGrid;
-    private Vector2Int[] usedPreyCells;
-    private bool[,] preyCellUsed;
-
 
     [Header("Energy Economy")]
     public float sunlightEnergyPerSecond = 5000f;

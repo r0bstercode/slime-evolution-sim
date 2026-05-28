@@ -778,18 +778,6 @@ public partial class SimulationManager
         );
     }
 
-    private Vector2 RotateDirection(Vector2 dir, float angleDegrees)
-    {
-        float rad = angleDegrees * Mathf.Deg2Rad;
-        float cos = Mathf.Cos(rad);
-        float sin = Mathf.Sin(rad);
-
-        return new Vector2(
-            dir.x * cos - dir.y * sin,
-            dir.x * sin + dir.y * cos
-        );
-    }
-
     private Vector2 RotateDirectionCached(Vector2 dir, float cos, float sin)
     {
         return new Vector2(
