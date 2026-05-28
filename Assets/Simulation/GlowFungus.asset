@@ -17,13 +17,13 @@ MonoBehaviour:
   sensorDistance: 7
   sensorAngle: 35
   trailStrength: 1.4
-  ownTrailAttraction: 1.2
-  foreignTrailRepulsion: 0.5
+  ownTrailAttraction: 0.5
+  foreignTrailRepulsion: 0.6
   maxAge: 1500
   startEnergy: 40
   startingPopulation: 1500
-  movementEnergyCost: 0.1
-  trailEnergyCost: 0.05
+  movementEnergyCost: 0.008
+  trailEnergyCost: 0.002
   eatPauseMin: 0.05
   eatPauseMax: 0.15
   greenPreference: 2
@@ -33,4 +33,4 @@ MonoBehaviour:
   reproductionThreshold: 120
   mutationChance: 0.02
   minReproductionAge: 15
-  speciesColor: {r: 0.254902, g: 0.4117647, b: 0.882353, a: 1}
+  speciesColor: {r: 0.16470589, g: 0.15686275, b: 0.6117647, a: 1}

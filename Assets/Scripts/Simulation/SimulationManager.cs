@@ -27,9 +27,9 @@ public partial class SimulationManager : MonoBehaviour
 
     public const int MaxSpecies = 32;
     public int activeSpeciesCount = 3;
-    
+    private int simulationSenseTick = 0;
+
     [Header("Performance")]
-    public bool enableDetailedProfiling = false;
     public bool showPerformanceStats = true;
     private float cachedFps;
     private float cachedFrameMs;
@@ -48,6 +48,7 @@ public partial class SimulationManager : MonoBehaviour
     private int trailSpeciesUpdateIndex = 0;
     public int foodUpdateStripes = 4;
     private int foodStripeIndex = 0;
+    public bool showTrails = true;
 
 
     [Header("Evolution")]
@@ -167,7 +168,7 @@ public partial class SimulationManager : MonoBehaviour
     
     [Header("Corpses")]
     public int maxCorpses = 5000;
-    public float corpseDecayRate = 0.03f;
+    public float corpseDecayRate = 0.000000003f;
     private float[,] corpseGrid;
 
     private Corpse[] corpses;
@@ -177,7 +178,7 @@ public partial class SimulationManager : MonoBehaviour
     public float minimumCorpseEnergy = 20f;
 
     [Header("Corpse Feeding")]
-    public float corpseEatAmount = 0.08f;
+    public float corpseEatAmount = 50f;
     public float corpseEnergyValue = 1f;
     public float corpseScavengerThreshold = 1.5f;
 
@@ -205,7 +206,10 @@ public partial class SimulationManager : MonoBehaviour
     public float preyAttackAmount = 25f;
     public float preyKillThreshold = 5f;
     public float preyEnergyValue = 0.8f;
-    public float preyAttackEnergyCost = 0.5f;
+    public float preyAttackEnergyCost = 0.2f;
+    public float preyAttackDamage = 5f;
+    public float preyAttackSlowDuration = 2f;
+    public float preyAttackSlowMultiplier = 0.25f;
 
     [Header("Trail Grid")]
     public int gridWidth = 200;
@@ -215,23 +219,23 @@ public partial class SimulationManager : MonoBehaviour
 
     [Header("Food Grid")]
     public float initialFoodAmount = 0.45f;
-    public float foodGrowthRate = 0.001f;
+    public float foodGrowthRate = 0.02f;
     public float foodGain = 25f;
-    public float foodEatAmount = 0.5f;
+    public float foodEatAmount = 10f;
     private float[,,] preyGrid;
     private float[,] totalPreyGrid;
     private Vector2Int[] usedPreyCells;
-    private int usedPreyCellCount = 0;
     private bool[,] preyCellUsed;
 
 
     [Header("Energy Economy")]
-    public float sunlightEnergyPerSecond = 500f;
+    public float sunlightEnergyPerSecond = 5000f;
     public float maxEcoEnergy = 600000f;
 
     [Header("Food Types")]
     public FoodType[] foodTypes;
     public int selectedFoodType = 0;
+    public float brownToGreenRate = 0.02f;
 
     [Header("Danger System")]
     public float dangerDeposit = 2f;
@@ -253,11 +257,6 @@ public partial class SimulationManager : MonoBehaviour
     private float[,] dangerGrid;
     private float[,] nextDangerGrid;
 
-    [Header("Debug Visuals")]
-    public bool showAgents = false;
-    public bool showFood = false;
-    public bool showTrails = false;
-    public bool showObstacles = false;
 
     public float agentDrawSize = 0.06f;
     public float foodAlpha = 0.18f;
@@ -306,6 +305,8 @@ public partial class SimulationManager : MonoBehaviour
 
         obstacleGrid = new bool[gridWidth, gridHeight];
         InitializeObstacles();
+        obstaclesDirty = true;
+
         InitializeFoodTypes();
 
         foodGrid = new float[gridWidth, gridHeight, foodTypes.Length];
@@ -320,35 +321,14 @@ public partial class SimulationManager : MonoBehaviour
 
         preyGrid = new float[gridWidth, gridHeight, MaxSpecies];
         totalPreyGrid = new float[gridWidth, gridHeight];
-
-        usedPreyCells = new Vector2Int[gridWidth * gridHeight];
-        preyCellUsed = new bool[gridWidth, gridHeight];
-        usedPreyCellCount = 0;
-
         agentIndexGrid = new int[gridWidth, gridHeight];
 
-        if (foodTypes == null || foodTypes.Length == 0)
-        {
-            foodTypes = new FoodType[2];
+        
+        InitializeFoodRenderer();
+        InitializeTrailRenderer();
+        InitializeObstacleRenderer();
+        InitializeAgentTextureRenderer();
 
-            foodTypes[1] = new FoodType
-            {
-                foodName = "Brown Decay",
-                color = new Color(0.55f, 0.27f, 0.07f),
-                growthRate = foodGrowthRate * 2f,
-                maxDensity = 25f,
-                energyValue = 0.3f
-            };
-
-            foodTypes[0] = new FoodType
-            {
-                foodName = "Green Biomass",
-                color = new Color(0.27f, 0.55f, 0f),
-                growthRate = foodGrowthRate,
-                maxDensity = 100f,
-                energyValue = 1f
-            };
-        }
         simulationPaused = true;
         worldAge = 0f;
         Debug.Log("Terrarium initialized.");

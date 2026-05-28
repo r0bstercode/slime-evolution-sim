@@ -101,6 +101,10 @@ public partial class SimulationManager
 
         child.canHuntPrey =
             child.preyPreference >= 1.5f;
+        child.RefreshCachedValues();
+        float rad = child.sensorAngle * Mathf.Deg2Rad;
+        child.sensorCos = Mathf.Cos(rad);
+        child.sensorSin = Mathf.Sin(rad);
     }
 
     private void ClampSpeciesTraits(RuntimeSpecies child)
@@ -140,12 +144,16 @@ public partial class SimulationManager
 
         child.mutationChance = Mathf.Clamp01(child.mutationChance);
 
-        child.hungerThreshold = Mathf.Clamp(child.hungerThreshold, 0.05f, 0.8f);
+        child.hungerThreshold = Mathf.Clamp(
+            child.hungerThreshold,
+            0f,
+            child.energyCapacity
+        );
 
         child.satiationThreshold = Mathf.Clamp(
             child.satiationThreshold,
-            child.hungerThreshold + 0.05f,
-            0.98f
+            child.hungerThreshold,
+            child.energyCapacity
         );
 
         if (child.foodPreferences != null)
@@ -208,6 +216,9 @@ public partial class SimulationManager
 
         clone.sensorDistance = parent.sensorDistance;
         clone.sensorAngle = parent.sensorAngle;
+
+        clone.hungerThreshold = parent.hungerThreshold;
+        clone.satiationThreshold = parent.satiationThreshold;
 
         clone.trailStrength = parent.trailStrength;
         clone.ownTrailAttraction = parent.ownTrailAttraction;
@@ -472,21 +483,21 @@ public partial class SimulationManager
         s.sensorDistance = 5f;
         s.sensorAngle = 35f;
 
-        s.trailStrength = 0.6f;
+        s.trailStrength = 1.4f;
         s.ownTrailAttraction = 1f;
         s.foreignTrailRepulsion = 0.5f;
 
         s.maxAge = 1000f;
         s.startEnergy = 100f;
         s.energyCapacity = 300f;
-        s.movementEnergyCost = 0.2f;
-        s.trailEnergyCost = 0.02f;
+        s.movementEnergyCost = 0.01f;
+        s.trailEnergyCost = 0.005f;
 
         s.eatPauseMin = 0.1f;
         s.eatPauseMax = 0.4f;
 
-        s.hungerThreshold = 0.25f;
-        s.satiationThreshold = 0.9f;
+        s.hungerThreshold = 60;
+        s.satiationThreshold = 0100f;
 
         s.reproductionThreshold = 220f;
         s.minReproductionAge = 20f;
@@ -524,6 +535,7 @@ public partial class SimulationManager
         }
 
         ClampSpeciesTraits(s);
+        s.RefreshCachedValues();
 
         return s;
     }

@@ -315,8 +315,8 @@ public partial class SimulationManager
         if (GUILayout.Button("+100", hudButtonStyle, GUILayout.Width(55), GUILayout.Height(22)))
             spawnCountPerClick += 100;
         GUILayout.EndHorizontal();
-
         GUILayout.BeginHorizontal();
+
         if (GUILayout.Button(
             panicMode ? "PANIC" : "NORMAL",
             GUILayout.Width(90),
@@ -324,6 +324,15 @@ public partial class SimulationManager
         {
             panicMode = !panicMode;
         }
+
+        if (GUILayout.Button(
+            showTrails ? "TRAILS ON" : "TRAILS OFF",
+            GUILayout.Width(90),
+            GUILayout.Height(24)))
+        {
+            showTrails = !showTrails;
+        }
+
         GUILayout.EndHorizontal();
     }
 
@@ -662,8 +671,27 @@ public partial class SimulationManager
             s.maxAge = DrawFloatEditor("Lifespan", "s", s.maxAge, baseMaxAge, 10f, 1f, 10000f, compactStyle);
             s.startEnergy = DrawFloatEditor("Start Energy", "E", s.startEnergy, baseStartEnergy, 10f, 0f, 10000f, compactStyle);
             s.energyCapacity = DrawFloatEditor("Capacity", "E", s.energyCapacity, baseCapacity, 10f, s.startEnergy, 50000f, compactStyle);
-            s.hungerThreshold = DrawFloatEditor("Hunger", "%", s.hungerThreshold * 100f, 20f, 5f, 0f, 100f, compactStyle) / 100f;
-            s.satiationThreshold = DrawFloatEditor("Satiation", "%", s.satiationThreshold * 100f, 90f, 5f, 0f, 100f, compactStyle) / 100f;
+            s.hungerThreshold = DrawFloatEditor(
+                "Hungry Below",
+                "E",
+                s.hungerThreshold,
+                60f,
+                5f,
+                0f,
+                s.energyCapacity,
+                compactStyle
+            );
+
+            s.satiationThreshold = DrawFloatEditor(
+                "Eat Until",
+                "E",
+                s.satiationThreshold,
+                100f,
+                5f,
+                0f,
+                s.energyCapacity,
+                compactStyle
+            );
         }
 
         GUILayout.Space(2);

@@ -466,8 +466,13 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f327c904ea2ef054ca749dc5b6b134b2, type: 2}
   - {fileID: 11400000, guid: a5afe20de68634a488b883d1902e0348, type: 2}
   activeSpeciesCount: 3
+  showPerformanceStats: 1
+  perfRefreshInterval: 0.25
   trailUpdateEveryNFrames: 3
   foodUpdateEveryNFrames: 3
+  agentUpdateStride: 2
+  foodUpdateStripes: 4
+  showTrails: 1
   mutationEnabled: 0
   mutationStrength: 0.05
   speciationThreshold: 1.5
@@ -481,6 +486,7 @@ MonoBehaviour:
   simulationPaused: 0
   worldAge: 0
   simulationSpeed: 1
+  panicMode: 0
   fixedSimulationDt: 0.02
   deathDecayConversion: 0.8
   decayGrowthBoost: 0.02
@@ -494,8 +500,6 @@ MonoBehaviour:
   populationGraphSamples: 120
   populationGraphInterval: 0.5
   populationGraphHeight: 90
-  showPerformanceStats: 1
-  perfRefreshInterval: 0.25
   maxCorpses: 5000
   corpseDecayRate: 2
   corpseBodyEnergyMultiplier: 0.5
@@ -514,7 +518,10 @@ MonoBehaviour:
   preyAttackAmount: 25
   preyKillThreshold: 5
   preyEnergyValue: 0.35
-  preyAttackEnergyCost: 3
+  preyAttackEnergyCost: 0.2
+  preyAttackDamage: 25
+  preyAttackSlowDuration: 0.8
+  preyAttackSlowMultiplier: 0.35
   gridWidth: 200
   gridHeight: 200
   trailDecayRate: 0.025
@@ -527,16 +534,13 @@ MonoBehaviour:
   maxEcoEnergy: 600000
   foodTypes: []
   selectedFoodType: 0
+  brownToGreenRate: 0.02
   dangerDeposit: 2
   dangerDecay: 1
   dangerDiffusion: 0.5
   preyDangerAvoidance: 3
   predatorThreshold: 0.5
   obstacleChance: 0.01
-  showAgents: 0
-  showFood: 1
-  showTrails: 1
-  showObstacles: 1
   agentDrawSize: 0.04
   foodAlpha: 0.12
   trailAlpha: 1.5

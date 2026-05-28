@@ -1,5 +1,14 @@
 using UnityEngine;
 
+[System.Flags]
+public enum FeedingMode
+{
+    None = 0,
+    Food = 1,
+    Corpses = 2,
+    Prey = 4
+}
+
 [System.Serializable]
 public class RuntimeSpecies
 {
@@ -18,6 +27,8 @@ public class RuntimeSpecies
     public bool canEatFood;
     public bool canEatCorpses;
     public bool canHuntPrey;
+    public float sensorCos;
+    public float sensorSin;
 
     [Header("Trail")]
     public float trailStrength;
@@ -46,6 +57,7 @@ public class RuntimeSpecies
     [Header("Corpse Feeding")]
     public float corpsePreference;
     public float preyPreference;
+    public FeedingMode feedingMode;
 
     [Header("Evolution Debug")]
     public int generation;
@@ -54,7 +66,7 @@ public class RuntimeSpecies
     public void CopyFromDNA(SpeciesDNA dna)
     {
         sourceDNA = dna;
-
+        
         active = true;
         speciesName = dna.name;
         color = dna.speciesColor;
@@ -64,8 +76,8 @@ public class RuntimeSpecies
 
         sensorDistance = dna.sensorDistance;
         sensorAngle = dna.sensorAngle;
-
         trailStrength = dna.trailStrength;
+
         ownTrailAttraction = dna.ownTrailAttraction;
         foreignTrailRepulsion = dna.foreignTrailRepulsion;
 
@@ -80,27 +92,19 @@ public class RuntimeSpecies
         reproductionThreshold = dna.reproductionThreshold;
         minReproductionAge = dna.minReproductionAge;
         mutationChance = dna.mutationChance;
-        hungerThreshold = 0.2f;
-        satiationThreshold = 0.9f;
+        hungerThreshold = 60f;
+        satiationThreshold = 100f;
 
         foodPreferences = new float[2];
-
         foodPreferences[0] = dna.greenPreference;
         foodPreferences[1] = dna.brownPreference;
 
         corpsePreference = dna.corpsePreference;
         preyPreference = dna.preyPreference;
 
-        canEatFood =
-            foodPreferences != null &&
-            (
-                foodPreferences[0] > 0.01f ||
-                foodPreferences[1] > 0.01f
-            );
+        RefreshCachedValues();
 
-        canEatCorpses = corpsePreference >= 1.5f;
-        canHuntPrey = preyPreference >= 1.5f;
-
+ 
         if (reproductionThreshold <= startEnergy)
             reproductionThreshold = startEnergy * 1.5f;
 
@@ -111,5 +115,37 @@ public class RuntimeSpecies
 
         generation = 0;
         mutationDistance = 0f;
+    }
+
+    public void RefreshCachedValues()
+    {
+        float sensorRad = sensorAngle * Mathf.Deg2Rad;
+
+        sensorCos = Mathf.Cos(sensorRad);
+        sensorSin = Mathf.Sin(sensorRad);
+
+        canEatFood =
+            foodPreferences != null &&
+            foodPreferences.Length >= 2 &&
+            (
+                foodPreferences[0] > 0.01f ||
+                foodPreferences[1] > 0.01f
+            );
+
+        canEatCorpses =
+            corpsePreference >= 1.5f ||
+            preyPreference >= 1.5f;
+        canHuntPrey = preyPreference >= 1.5f;
+
+        feedingMode = FeedingMode.None;
+
+        if (canEatFood)
+            feedingMode |= FeedingMode.Food;
+
+        if (canEatCorpses)
+            feedingMode |= FeedingMode.Corpses;
+
+        if (canHuntPrey)
+            feedingMode |= FeedingMode.Prey;
     }
 }

@@ -20,8 +20,8 @@ public class SpeciesDNA : ScriptableObject
     public float maxAge = 120f;
     public float startEnergy = 100f;
     public int startingPopulation = 1000;
-    public float movementEnergyCost = 0.1f;
-    public float trailEnergyCost = 0.05f;
+    public float movementEnergyCost = 0.01f;
+    public float trailEnergyCost = 0.005f;
     public float eatPauseMin = 0.05f;
     public float eatPauseMax = 0.15f;
 

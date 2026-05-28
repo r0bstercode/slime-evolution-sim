@@ -7,6 +7,8 @@ public partial class SimulationManager
         int stride = Mathf.Max(1, agentUpdateStride);
         agentUpdateOffset = (agentUpdateOffset + 1) % stride;
 
+        simulationSenseTick++;
+
         for (int i = agentUpdateOffset; i < agents.Length; i += stride)
         {
             SlimeAgent agent = agents[i];
@@ -17,8 +19,8 @@ public partial class SimulationManager
             RuntimeSpecies dna = runtimeSpecies[agent.speciesIndex];
 
             float dt = fixedSimulationDt;
-            float energyRatio = agent.energy / dna.energyCapacity;
-            bool hungry = energyRatio < dna.satiationThreshold;
+
+            bool hungry = agent.energy < dna.satiationThreshold;
             bool resting = !hungry && !panicMode;
             float activityMultiplier = resting ? 0.25f : 1f;
 
@@ -29,27 +31,78 @@ public partial class SimulationManager
                 continue;
             }
 
+            if (agent.lockedCorpseIndex >= 0)
+            {
+                EatLockedCorpse(ref agent, dna, dt);
+                agents[i] = agent;
+                continue;
+            }
+
             Vector2 forwardDirection = AngleToDirection(agent.angle);
 
             if (hungry)
             {
-                Vector2 leftDirection = RotateDirection(forwardDirection, -dna.sensorAngle);
-                Vector2 rightDirection = RotateDirection(forwardDirection, dna.sensorAngle);
+                int senseInterval = dna.canHuntPrey ? 2 : 3;
 
-                float leftSense = SenseEnvironment(agent, dna, leftDirection);
-                float forwardSense = SenseEnvironment(agent, dna, forwardDirection);
-                float rightSense = SenseEnvironment(agent, dna, rightDirection);
+                bool shouldRescan =
+                    !agent.senseCacheValid ||
+                    ((i + simulationSenseTick) % senseInterval) == 0;
 
-                if (leftSense > forwardSense && leftSense > rightSense)
+                if (shouldRescan)
+                {
+                    Vector2 leftDirection = RotateDirectionCached(
+                        forwardDirection,
+                        dna.sensorCos,
+                        -dna.sensorSin
+                    );
+
+                    Vector2 rightDirection = RotateDirectionCached(
+                        forwardDirection,
+                        dna.sensorCos,
+                        dna.sensorSin
+                    );
+
+                    agent.cachedLeftSense =
+                        SenseEnvironment(agent, dna, leftDirection);
+
+                    agent.cachedForwardSense =
+                        SenseEnvironment(agent, dna, forwardDirection);
+
+                    agent.cachedRightSense =
+                        SenseEnvironment(agent, dna, rightDirection);
+
+                    agent.senseCacheValid = true;
+                }
+
+                if (
+                    agent.cachedLeftSense > agent.cachedForwardSense &&
+                    agent.cachedLeftSense > agent.cachedRightSense
+                )
                     agent.angle -= dna.turnSpeed * dt;
-                else if (rightSense > forwardSense && rightSense > leftSense)
+                else if (
+                    agent.cachedRightSense > agent.cachedForwardSense &&
+                    agent.cachedRightSense > agent.cachedLeftSense
+                )
                     agent.angle += dna.turnSpeed * dt;
 
                 forwardDirection = AngleToDirection(agent.angle);
             }
 
+            float injuryMultiplier = 1f;
+
+            if (agent.slowTimer > 0f)
+            {
+                injuryMultiplier = agent.slowMultiplier;
+                agent.slowTimer -= dt;
+            }
+
             Vector2 oldPosition = agent.position;
-            agent.position += forwardDirection * dna.speed * activityMultiplier * dt;
+            agent.position +=
+                forwardDirection *
+                dna.speed *
+                activityMultiplier *
+                injuryMultiplier *
+                dt;
 
             KeepAgentInsideBounds(ref agent);
 
@@ -62,11 +115,9 @@ public partial class SimulationManager
             float trailActivityMultiplier = resting ? 0.25f : 1f;
             DepositTrail(agent, dna, dt, trailActivityMultiplier);
             DepositDanger(agent, dna, dt);
-
             TryAttackPrey(ref agent, dna, dt);
             EatCorpse(ref agent, dna, dt);
-            EatFood(ref agent, dt);
-
+            EatFood(ref agent, dna, dt);
             agent.energy -= dna.movementEnergyCost * activityMultiplier * dt;
             agent.energy -= dna.trailEnergyCost * activityMultiplier * dt;
 
@@ -74,13 +125,11 @@ public partial class SimulationManager
 
             agent.age += dt;
 
-            if (agent.energy <= 0f || agent.age >= dna.maxAge)
+            float naturalDeathThreshold = 20f;
+
+            if (agent.energy <= naturalDeathThreshold || agent.hp <= 0f || agent.age >= dna.maxAge)
             {
-                float corpseEnergy = Mathf.Max(
-                    agent.energy,
-                    dna.startEnergy * corpseBodyEnergyMultiplier,
-                    minimumCorpseEnergy
-                );
+                float corpseEnergy = Mathf.Max(0f, agent.energy);
 
                 SpawnCorpse(agent.position, corpseEnergy, agent.speciesIndex);
                 totalSpeciesDeaths[agent.speciesIndex]++;
@@ -100,19 +149,8 @@ public partial class SimulationManager
         Vector2 sensorDirection
     )
     {
-        if (agent.speciesIndex < 0 || agent.speciesIndex >= activeSpeciesCount)
-            return 0f;
-
-        if (dna == null || !dna.active)
-            return 0f;
-
-        if (dna.foodPreferences == null)
-            return 0f;
-
-        float energyRatio = agent.energy / dna.energyCapacity;
-
-        if (energyRatio >= dna.satiationThreshold)
-            return 0f;
+        float hungerMultiplier =
+            agent.energy < dna.hungerThreshold ? 3f : 1f;
 
         Vector2 sensorPosition =
             agent.position + sensorDirection * dna.sensorDistance;
@@ -123,10 +161,8 @@ public partial class SimulationManager
         if (obstacleGrid[x, y])
             return -10f;
 
-        float hungerMultiplier =
-            energyRatio < dna.hungerThreshold ? 3f : 1f;
-
         float ownTrail = trailGrid[x, y, agent.speciesIndex];
+
         float foreignTrail = 0f;
 
         if (Mathf.Abs(dna.foreignTrailRepulsion) > 0.001f)
@@ -141,35 +177,57 @@ public partial class SimulationManager
         }
 
         float trailSignal =
-            ownTrail * dna.ownTrailAttraction -
-            foreignTrail * dna.foreignTrailRepulsion;
+            -foreignTrail * dna.foreignTrailRepulsion;
 
         float foodSignal = 0f;
 
-        if (dna.canEatFood)
-            foodSignal += GetPreferredFoodSignalAt(x, y, dna) * hungerMultiplier;
+        switch (dna.feedingMode)
+        {
+            case FeedingMode.Food:
+                foodSignal += SampleFoodSignalRadius(x, y, dna, 2) * hungerMultiplier;
+                break;
 
-        if (dna.canEatCorpses)
-            foodSignal += GetCorpseSignalAt(sensorPosition, dna) * hungerMultiplier;
+            case FeedingMode.Corpses:
+                foodSignal += SampleCorpseSignalRadius(x, y, dna, 2) * hungerMultiplier;
+                break;
 
-        if (dna.canHuntPrey)
-            foodSignal += GetPreySignalAt(
-                sensorPosition,
-                dna,
-                agent.speciesIndex
-            ) * hungerMultiplier;
+            case FeedingMode.Prey:
+                foodSignal += SamplePreySignalRadius(x, y, dna, agent.speciesIndex, 2) * hungerMultiplier;
+                break;
 
-        float dangerSignal = GetDangerSignalAt(sensorPosition, dna);
+            case FeedingMode.Food | FeedingMode.Corpses:
+                foodSignal += SampleFoodSignalRadius(x, y, dna, 2) * hungerMultiplier;
+                foodSignal += SampleCorpseSignalRadius(x, y, dna, 2) * hungerMultiplier;
+                break;
 
-        return trailSignal + foodSignal - dangerSignal;
+            case FeedingMode.Food | FeedingMode.Prey:
+                foodSignal += SampleFoodSignalRadius(x, y, dna, 2) * hungerMultiplier;
+                foodSignal += SamplePreySignalRadius(x, y, dna, agent.speciesIndex, 2) * hungerMultiplier;
+                break;
+
+            case FeedingMode.Corpses | FeedingMode.Prey:
+                foodSignal += SampleCorpseSignalRadius(x, y, dna, 2) * hungerMultiplier;
+                foodSignal += SamplePreySignalRadius(x, y, dna, agent.speciesIndex, 2) * hungerMultiplier;
+                break;
+
+            case FeedingMode.Food | FeedingMode.Corpses | FeedingMode.Prey:
+                foodSignal += SampleFoodSignalRadius(x, y, dna, 2) * hungerMultiplier;
+                foodSignal += SampleCorpseSignalRadius(x, y, dna, 2) * hungerMultiplier;
+                foodSignal += SamplePreySignalRadius(x, y, dna, agent.speciesIndex, 2) * hungerMultiplier;
+                break;
+        }
+
+        float dangerSignal = GetDangerSignalAt(x, y, dna);
+
+        return trailSignal * 0.3f + foodSignal - dangerSignal;
     }
 
     private void DepositTrail(
-        SlimeAgent agent,
-        RuntimeSpecies dna,
-        float dt,
-        float multiplier
-    )
+    SlimeAgent agent,
+    RuntimeSpecies dna,
+    float dt,
+    float multiplier
+)
     {
         if (!WorldToGrid(agent.position, out int x, out int y))
             return;
@@ -186,7 +244,7 @@ public partial class SimulationManager
         trailGrid[x, y, s] = Mathf.Clamp01(trailGrid[x, y, s]);
     }
 
-    private void EatFood(ref SlimeAgent agent, float dt)
+    private void EatFood(ref SlimeAgent agent, RuntimeSpecies dna, float dt)
     {
         if (!WorldToGrid(agent.position, out int x, out int y))
             return;
@@ -197,14 +255,7 @@ public partial class SimulationManager
         if (agent.speciesIndex < 0 || agent.speciesIndex >= activeSpeciesCount)
             return;
 
-        RuntimeSpecies dna = runtimeSpecies[agent.speciesIndex];
-
-        if (dna == null || !dna.active)
-            return;
-
-        float energyRatio = agent.energy / dna.energyCapacity;
-
-        if (energyRatio >= dna.satiationThreshold)
+        if (agent.energy >= dna.satiationThreshold)
             return;
 
         int bestFoodType = GetBestFoodTypeAt(x, y, dna);
@@ -212,46 +263,109 @@ public partial class SimulationManager
         if (bestFoodType < 0 || bestFoodType >= foodGrid.GetLength(2))
             return;
 
-        FoodType foodType = foodTypes[bestFoodType];
-
         float available = foodGrid[x, y, bestFoodType];
-        float eaten = Mathf.Min(foodEatAmount * dt, available);
+        float eaten = Mathf.Min(
+            foodEatAmount,
+            available
+        );
+
+        if (eaten <= 0f)
+            return;
 
         foodGrid[x, y, bestFoodType] -= eaten;
 
         agent.energy = Mathf.Min(
             dna.energyCapacity,
-            agent.energy + eaten * foodGain * foodType.energyValue
+            agent.energy + eaten
         );
 
-        if (eaten > 0f)
+        agent.angle += 180f + Random.Range(-30f, 30f);
+        agent.pauseTimer = Random.Range(dna.eatPauseMin, dna.eatPauseMax);
+    }
+
+    private void EatLockedCorpse(ref SlimeAgent agent, RuntimeSpecies dna, float dt)
+    {
+        int index = agent.lockedCorpseIndex;
+
+        if (index < 0 || index >= corpses.Length)
         {
-            agent.angle += 180f + Random.Range(-30f, 30f);
-            agent.pauseTimer = Random.Range(dna.eatPauseMin, dna.eatPauseMax);
+            agent.lockedCorpseIndex = -1;
+            return;
         }
+
+        if (!corpses[index].active)
+        {
+            agent.lockedCorpseIndex = -1;
+            return;
+        }
+
+        if (agent.energy >= dna.satiationThreshold)
+        {
+            agent.lockedCorpseIndex = -1;
+            return;
+        }
+
+        Corpse corpse = corpses[index];
+
+        agent.position = corpse.position;
+
+        float eaten = Mathf.Min(
+            corpseEatAmount,
+            corpse.energy
+        );
+
+        if (eaten <= 0f)
+        {
+            agent.lockedCorpseIndex = -1;
+            return;
+        }
+
+        corpse.energy -= eaten;
+
+        if (WorldToGrid(corpse.position, out int x, out int y))
+        {
+            corpseGrid[x, y] = Mathf.Max(
+                0f,
+                corpseGrid[x, y] - eaten
+            );
+        }
+
+        if (corpse.energy <= 0.01f)
+        {
+            corpse.active = false;
+            agent.lockedCorpseIndex = -1;
+        }
+
+        corpses[index] = corpse;
+
+        agent.energy = Mathf.Min(
+            dna.energyCapacity,
+            agent.energy + eaten
+        );
+
+        agent.pauseTimer = Random.Range(
+            dna.eatPauseMin,
+            dna.eatPauseMax
+        );
     }
 
     private int GetBestFoodTypeAt(int x, int y, RuntimeSpecies speciesData)
-    {
-        int bestFoodType = -1;
-        float bestValue = 0f;
+{
+    float greenValue =
+        foodGrid[x, y, 0] *
+        foodTypes[0].energyValue *
+        speciesData.foodPreferences[0];
 
-        for (int f = 0; f < foodTypes.Length; f++)
-        {
-            float value =
-                foodGrid[x, y, f] *
-                foodTypes[f].energyValue *
-                speciesData.foodPreferences[f];
+    float brownValue =
+        foodGrid[x, y, 1] *
+        foodTypes[1].energyValue *
+        speciesData.foodPreferences[1];
 
-            if (value > bestValue)
-            {
-                bestValue = value;
-                bestFoodType = f;
-            }
-        }
+    if (greenValue <= 0f && brownValue <= 0f)
+        return -1;
 
-        return bestValue > 0f ? bestFoodType : -1;
-    }
+    return greenValue >= brownValue ? 0 : 1;
+}
 
     private float GetPreferredFoodSignalAt(
         int x,
@@ -259,14 +373,117 @@ public partial class SimulationManager
         RuntimeSpecies speciesData
     )
     {
+        return
+            foodGrid[x, y, 0] *
+            foodTypes[0].energyValue *
+            speciesData.foodPreferences[0]
+            +
+            foodGrid[x, y, 1] *
+            foodTypes[1].energyValue *
+            speciesData.foodPreferences[1];
+    }
+
+    private float SampleFoodSignalRadius(
+    int centerX,
+    int centerY,
+    RuntimeSpecies dna,
+    int radius
+)
+    {
         float signal = 0f;
 
-        for (int f = 0; f < foodTypes.Length; f++)
+        for (int ox = -radius; ox <= radius; ox++)
         {
-            signal +=
-                foodGrid[x, y, f] *
-                foodTypes[f].energyValue *
-                speciesData.foodPreferences[f];
+            for (int oy = -radius; oy <= radius; oy++)
+            {
+                int x = centerX + ox;
+                int y = centerY + oy;
+
+                if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight)
+                    continue;
+
+                if (obstacleGrid[x, y])
+                    continue;
+
+                float distance = Mathf.Sqrt(ox * ox + oy * oy);
+                if (distance > radius)
+                    continue;
+
+                float weight = 1f / (1f + distance);
+
+                signal += GetPreferredFoodSignalAt(x, y, dna) * weight;
+            }
+        }
+
+        return signal;
+    }
+
+    private float SampleCorpseSignalRadius(
+        int centerX,
+        int centerY,
+        RuntimeSpecies dna,
+        int radius
+    )
+    {
+        float signal = 0f;
+
+        for (int ox = -radius; ox <= radius; ox++)
+        {
+            for (int oy = -radius; oy <= radius; oy++)
+            {
+                int x = centerX + ox;
+                int y = centerY + oy;
+
+                if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight)
+                    continue;
+
+                if (obstacleGrid[x, y])
+                    continue;
+
+                float distance = Mathf.Sqrt(ox * ox + oy * oy);
+                if (distance > radius)
+                    continue;
+
+                float weight = 1f / (1f + distance);
+
+                signal += GetCorpseSignalAt(x, y, dna) * weight;
+            }
+        }
+
+        return signal;
+    }
+
+    private float SamplePreySignalRadius(
+        int centerX,
+        int centerY,
+        RuntimeSpecies dna,
+        int ownSpeciesIndex,
+        int radius
+    )
+    {
+        float signal = 0f;
+
+        for (int ox = -radius; ox <= radius; ox++)
+        {
+            for (int oy = -radius; oy <= radius; oy++)
+            {
+                int x = centerX + ox;
+                int y = centerY + oy;
+
+                if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight)
+                    continue;
+
+                if (obstacleGrid[x, y])
+                    continue;
+
+                float distance = Mathf.Sqrt(ox * ox + oy * oy);
+                if (distance > radius)
+                    continue;
+
+                float weight = 1f / (1f + distance);
+
+                signal += GetPreySignalAt(x, y, dna, ownSpeciesIndex) * weight;
+            }
         }
 
         return signal;
@@ -325,7 +542,16 @@ public partial class SimulationManager
             age = 0f,
             energy = parent.energy,
             alive = true,
-            pauseTimer = 0f
+            pauseTimer = 0f,
+            hp = 1f,
+            slowTimer = 0f,
+            slowMultiplier = 1f,
+            lockedCorpseIndex = -1,
+
+            cachedLeftSense = 0f,
+            cachedForwardSense = 0f,
+            cachedRightSense = 0f,
+            senseCacheValid = false
         };
 
         totalSpeciesBirths[parent.speciesIndex]++;
@@ -392,9 +618,7 @@ public partial class SimulationManager
         if (dna.preyPreference < preyScavengerThreshold)
             return;
 
-        float energyRatio = hunter.energy / dna.energyCapacity;
-
-        if (energyRatio >= dna.satiationThreshold)
+        if (hunter.energy >= dna.satiationThreshold)
             return;
 
         if (!WorldToGrid(hunter.position, out int cx, out int cy))
@@ -455,33 +679,39 @@ public partial class SimulationManager
 
         SlimeAgent prey = agents[bestTarget];
 
-        float stolen = preyAttackAmount * dt;
-        stolen = Mathf.Min(stolen, prey.energy);
+        float damage = preyAttackDamage * dt;
 
-        prey.energy -= stolen;
-
-        hunter.energy = Mathf.Min(
-            dna.energyCapacity,
-            hunter.energy + stolen * preyEnergyValue
-        );
+        prey.hp -= damage;
+        prey.slowTimer = preyAttackSlowDuration;
+        prey.slowMultiplier = preyAttackSlowMultiplier;
 
         hunter.energy -= preyAttackEnergyCost * dt;
         hunter.energy = Mathf.Max(0f, hunter.energy);
 
-        if (prey.energy <= preyKillThreshold)
+        if (prey.hp <= 0f)
         {
-            RuntimeSpecies preyDna = runtimeSpecies[prey.speciesIndex];
+            float corpseEnergy = Mathf.Max(0f, prey.energy);
 
-            float corpseEnergy = Mathf.Max(
-                prey.energy,
-                preyDna.startEnergy * corpseBodyEnergyMultiplier,
-                minimumCorpseEnergy
+            int corpseIndex = SpawnCorpse(
+                prey.position,
+                corpseEnergy,
+                prey.speciesIndex
             );
 
-            SpawnCorpse(prey.position, corpseEnergy, prey.speciesIndex);
             totalSpeciesDeaths[prey.speciesIndex]++;
             cachedSpeciesDeaths[prey.speciesIndex]++;
+
             prey.alive = false;
+            agents[bestTarget] = prey;
+
+            if (corpseIndex >= 0)
+            {
+                hunter.position = prey.position;
+                hunter.lockedCorpseIndex = corpseIndex;
+                hunter.pauseTimer = 0f;
+            }
+
+            return;
         }
 
         agents[bestTarget] = prey;
@@ -493,14 +723,12 @@ public partial class SimulationManager
     }
 
     private float GetPreySignalAt(
-        Vector2 sensorPosition,
-        RuntimeSpecies dna,
-        int ownSpeciesIndex
-    )
+    int x,
+    int y,
+    RuntimeSpecies dna,
+    int ownSpeciesIndex
+)
     {
-        if (!WorldToGrid(sensorPosition, out int x, out int y))
-            return 0f;
-
         float preyEnergy = totalPreyGrid[x, y];
 
         if (ownSpeciesIndex >= 0 && ownSpeciesIndex < activeSpeciesCount)
@@ -556,6 +784,14 @@ public partial class SimulationManager
         float cos = Mathf.Cos(rad);
         float sin = Mathf.Sin(rad);
 
+        return new Vector2(
+            dir.x * cos - dir.y * sin,
+            dir.x * sin + dir.y * cos
+        );
+    }
+
+    private Vector2 RotateDirectionCached(Vector2 dir, float cos, float sin)
+    {
         return new Vector2(
             dir.x * cos - dir.y * sin,
             dir.x * sin + dir.y * cos

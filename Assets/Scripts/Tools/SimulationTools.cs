@@ -216,9 +216,19 @@ public partial class SimulationManager
                 angle = Random.Range(0f, 360f),
                 speciesIndex = speciesIndex,
                 age = 0f,
-                energy = dna.startEnergy,
+                energy = runtimeSpecies[speciesIndex].startEnergy,
                 alive = true,
-                pauseTimer = 0f
+                lockedCorpseIndex = -1,
+                pauseTimer = 0f,
+                hp = 1f,
+                slowTimer = 0f,
+                slowMultiplier = 1f,
+
+
+                cachedLeftSense = 0f,
+                cachedForwardSense = 0f,
+                cachedRightSense = 0f,
+                senseCacheValid = false
             };
 
             spawned++;

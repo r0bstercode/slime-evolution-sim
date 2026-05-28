@@ -14,17 +14,17 @@ public partial class SimulationManager
             foodName = "Green Biomass",
             color = new Color(0.27f, 0.55f, 0f),
             growthRate = foodGrowthRate,
-            maxDensity = 15f,
-            energyValue = 8f
+            maxDensity = 100f,
+            energyValue = 1f
         };
 
         foodTypes[1] = new FoodType
         {
             foodName = "Brown Decay",
             color = new Color(0.55f, 0.27f, 0.07f),
-            growthRate = foodGrowthRate * 2f,
-            maxDensity = 25f,
-            energyValue = 0.8f
+            growthRate = 0f,
+            maxDensity = 100f,
+            energyValue = 1f
         };
     }
 
@@ -75,14 +75,12 @@ public partial class SimulationManager
                 if (obstacleGrid[x, y])
                     continue;
 
-                // Green Biomass
+                // Green Biomass: echte neue Energie durch Sunlight
                 float green = foodGrid[x, y, 0];
 
                 if (green > 0f)
                 {
-                    float growthAmount =
-                        foodTypes[0].growthRate * scaledDt +
-                        foodGrid[x, y, 1] * decayGrowthBoost * scaledDt;
+                    float growthAmount = foodTypes[0].growthRate * scaledDt;
 
                     growthAmount = Mathf.Min(growthAmount, greenGrowthBudget);
                     greenGrowthBudget -= growthAmount;
@@ -103,14 +101,21 @@ public partial class SimulationManager
                     foodGrid[x, y, 0] = foodTypes[0].maxDensity * 0.1f;
                 }
 
-                // Brown Decay
+                // Brown Decay: wird langsam 1:1 zu Green Biomass
                 float brown = foodGrid[x, y, 1];
 
                 if (brown > 0f)
                 {
-                    foodGrid[x, y, 1] = Mathf.Max(
-                        0f,
-                        brown - brownDecayLoss * scaledDt
+                    float brownToGreen = Mathf.Min(
+                        brown,
+                        brownToGreenRate * scaledDt
+                    );
+
+                    foodGrid[x, y, 1] = brown - brownToGreen;
+
+                    foodGrid[x, y, 0] = Mathf.Min(
+                        foodTypes[0].maxDensity,
+                        foodGrid[x, y, 0] + brownToGreen
                     );
 
                     if (foodGrid[x, y, 1] >= foodTypes[1].maxDensity &&
@@ -193,10 +198,10 @@ public partial class SimulationManager
         }
     }
 
-    private void SpawnCorpse(Vector2 worldPos, float sourceEnergy, int speciesIndex)
+    private int SpawnCorpse(Vector2 worldPos, float sourceEnergy, int speciesIndex)
     {
         if (sourceEnergy <= 0f)
-            return;
+            return -1;
 
         for (int i = 0; i < corpses.Length; i++)
         {
@@ -213,20 +218,21 @@ public partial class SimulationManager
             };
 
             if (WorldToGrid(worldPos, out int gx, out int gy))
-            {
                 corpseGrid[gx, gy] += sourceEnergy;
-            }
 
-            return;
+            return i;
         }
+
+        return -1;
     }
 
-    private float GetCorpseSignalAt(Vector2 sensorPosition, RuntimeSpecies dna)
+    private float GetCorpseSignalAt(int x, int y, RuntimeSpecies dna)
     {
-        if (!WorldToGrid(sensorPosition, out int x, out int y))
+        if (corpseGrid == null)
             return 0f;
 
-        return corpseGrid[x, y] * dna.corpsePreference;
+        float preference = Mathf.Max(dna.corpsePreference, dna.canHuntPrey ? 1.5f : 0f);
+        return corpseGrid[x, y] * preference;
     }
 
     private void InitializeObstacles()
@@ -570,29 +576,54 @@ public partial class SimulationManager
 
     private void EatCorpse(ref SlimeAgent agent, RuntimeSpecies dna, float dt)
     {
-        float energyRatio = agent.energy / dna.energyCapacity;
-
-        if (energyRatio >= dna.satiationThreshold)
+        if (agent.energy >= dna.satiationThreshold)
             return;
 
-        if (dna.corpsePreference < corpseScavengerThreshold)
+        if (!dna.canEatCorpses)
             return;
 
         if (!WorldToGrid(agent.position, out int x, out int y))
             return;
 
-        //if (IsOwnCorpseAt(agent.position, agent.speciesIndex))
-        //    return;
-
-        float available = corpseGrid[x, y];
-
-        if (available <= 0.01f)
+        if (corpseGrid[x, y] <= 0.01f)
             return;
 
+        int corpseIndex = -1;
+
+        for (int i = 0; i < corpses.Length; i++)
+        {
+            if (!corpses[i].active)
+                continue;
+
+            if (!WorldToGrid(corpses[i].position, out int cx, out int cy))
+                continue;
+
+            if (cx == x && cy == y)
+            {
+                corpseIndex = i;
+                break;
+            }
+        }
+
+        if (corpseIndex < 0)
+            return;
+
+        Corpse corpse = corpses[corpseIndex];
+
         float eaten = Mathf.Min(
-            corpseEatAmount * dt,
-            available
+            corpseEatAmount,
+            corpse.energy
         );
+
+        if (eaten <= 0f)
+            return;
+
+        corpse.energy -= eaten;
+
+        if (corpse.energy <= 0.01f)
+            corpse.active = false;
+
+        corpses[corpseIndex] = corpse;
 
         corpseGrid[x, y] = Mathf.Max(
             0f,
@@ -601,7 +632,7 @@ public partial class SimulationManager
 
         agent.energy = Mathf.Min(
             dna.energyCapacity,
-            agent.energy + eaten * corpseEnergyValue
+            agent.energy + eaten
         );
 
         agent.pauseTimer = Random.Range(
@@ -706,15 +737,12 @@ public partial class SimulationManager
         nextDangerGrid = temp;
     }
 
-    private float GetDangerSignalAt(Vector2 sensorPosition, RuntimeSpecies dna)
+    private float GetDangerSignalAt(int x, int y, RuntimeSpecies dna)
     {
         if (dangerGrid == null)
             return 0f;
 
         if (dna.preyPreference >= predatorThreshold)
-            return 0f;
-
-        if (!WorldToGrid(sensorPosition, out int x, out int y))
             return 0f;
 
         return dangerGrid[x, y] * preyDangerAvoidance;

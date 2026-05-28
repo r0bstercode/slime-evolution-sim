@@ -120,6 +120,12 @@ public partial class SimulationManager
 
                 float green = foodGrid[x, y, 0] / foodTypes[0].maxDensity;
                 float brown = foodGrid[x, y, 1] / foodTypes[1].maxDensity;
+                float corpse = 0f;
+
+                if (corpseGrid != null)
+                    corpse = corpseGrid[x, y] / 5f;
+
+                corpse = Mathf.Clamp01(corpse);
 
                 green = Mathf.Clamp01(green);
                 brown = Mathf.Clamp01(brown);
@@ -131,6 +137,9 @@ public partial class SimulationManager
 
                 if (brown > 0.01f)
                     color += new Color(0.55f, 0.27f, 0.07f) * brown;
+
+                if (corpse > 0.01f)
+                    color += new Color(0.9f, 0.1f, 0.1f) * corpse;
 
                 color.a = 1f;
 
@@ -168,6 +177,16 @@ public partial class SimulationManager
 
     private void UpdateTrailTexture()
     {
+        if (!showTrails)
+        {
+            for (int i = 0; i < trailPixels.Length; i++)
+                trailPixels[i] = Color.clear;
+
+            trailTexture.SetPixels(trailPixels);
+            trailTexture.Apply(false);
+            return;
+        }
+
         if (trailTexture == null || trailGrid == null || runtimeSpecies == null)
             return;
 

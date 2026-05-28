@@ -12,4 +12,21 @@ public struct SlimeAgent
     public bool alive;
 
     public float pauseTimer;
+
+    public int lockedCorpseIndex;
+
+    public float hp;
+    public float slowTimer;
+    public float slowMultiplier;
+
+    public float cachedLeftSense;
+    public float cachedForwardSense;
+    public float cachedRightSense;
+    public bool senseCacheValid;
+
+  
+
+
+
+   
 }

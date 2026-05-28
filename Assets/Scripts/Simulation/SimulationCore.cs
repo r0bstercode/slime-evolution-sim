@@ -30,7 +30,15 @@ public partial class SimulationManager
                     age = 0f,
                     energy = dna.startEnergy,
                     alive = true,
-                    pauseTimer = 0f
+                    hp = 1f,
+                    slowTimer = 0f,
+                    slowMultiplier = 1f,
+                    pauseTimer = 0f,
+                    lockedCorpseIndex = -1,
+                    cachedLeftSense = 0f,
+                    cachedForwardSense = 0f,
+                    cachedRightSense = 0f,
+                    senseCacheValid = false
                 };
 
                 agentIndex++;
@@ -58,17 +66,11 @@ public partial class SimulationManager
     {
         trailGrid = new float[gridWidth, gridHeight, MaxSpecies];
         nextTrailGrid = new float[gridWidth, gridHeight, MaxSpecies];
-
         obstacleGrid = new bool[gridWidth, gridHeight];
         InitializeObstacles();
 
         foodGrid = new float[gridWidth, gridHeight, foodTypes.Length];
         InitializeFood();
-        InitializeFoodRenderer();
-        InitializeTrailRenderer();
-        InitializeObstacleRenderer();
-        InitializeAgentTextureRenderer();
-        //InitializeAgentRenderer();
         dangerGrid = new float[gridWidth, gridHeight];
         nextDangerGrid = new float[gridWidth, gridHeight];
         InitializeAgents();
@@ -86,10 +88,6 @@ public partial class SimulationManager
             }
         }
 
-        usedPreyCells = new Vector2Int[gridWidth * gridHeight];
-        preyCellUsed = new bool[gridWidth, gridHeight];
-        usedPreyCellCount = 0;
-
         mutationCooldowns = new float[MaxSpecies];
         speciesSpeciationCooldowns = new float[MaxSpecies];
         globalSpeciationTimer = 0f;
@@ -104,27 +102,16 @@ public partial class SimulationManager
         cachedSpeciesBirthRate = new float[MaxSpecies];
         cachedSpeciesDeathRate = new float[MaxSpecies];
 
+        obstaclesDirty = true;
+
+        UpdateFoodTexture();
+        UpdateTrailTexture();
+        UpdateObstacleTexture();
+        UpdateAgentTexture();
+
+        
         simulationPaused = true;
         worldAge = 0f;
-    }
-
-    private void SpawnDeathDecay(Vector2 worldPos, float sourceEnergy)
-    {
-        if (foodGrid == null || foodTypes == null || foodTypes.Length < 2)
-            return;
-
-        float decayEnergy = sourceEnergy * deathDecayConversion;
-
-        if (decayEnergy <= 0f)
-            return;
-
-        if (!WorldToGrid(worldPos, out int gx, out int gy))
-            return;
-
-        if (obstacleGrid != null && obstacleGrid[gx, gy])
-            return;
-
-        foodGrid[gx, gy, 1] += decayEnergy;
     }
 
     private Color GetToolColor()
@@ -210,10 +197,10 @@ public partial class SimulationManager
             for (int y = 0; y < gridHeight; y++)
             {
                 if (foodTypes.Length > 0)
-                    cachedGreenEnergy += foodGrid[x, y, 0] * foodTypes[0].energyValue;
+                    cachedGreenEnergy += foodGrid[x, y, 0];
 
                 if (foodTypes.Length > 1)
-                    cachedBrownEnergy += foodGrid[x, y, 1] * foodTypes[1].energyValue;
+                    cachedBrownEnergy += foodGrid[x, y, 1];
             }
         }
 
