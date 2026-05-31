@@ -14,7 +14,7 @@ public partial class SimulationManager
             foodName = "Green Biomass",
             color = new Color(0.27f, 0.55f, 0f),
             growthRate = foodGrowthRate,
-            maxDensity = 100f,
+            maxDensity = 10000f,
             energyValue = 1f
         };
 
@@ -23,7 +23,7 @@ public partial class SimulationManager
             foodName = "Brown Decay",
             color = new Color(0.55f, 0.27f, 0.07f),
             growthRate = 0f,
-            maxDensity = 100f,
+            maxDensity = 10000f,
             energyValue = 1f
         };
     }
@@ -42,10 +42,80 @@ public partial class SimulationManager
                 if (obstacleGrid[x, y])
                     continue;
 
-                if (Random.value < initialFoodAmount)
-                    foodGrid[x, y, 0] = foodTypes[0].maxDensity;
             }
         }
+        SpawnInitialFoodBlobs();
+    }
+
+    private void SpawnInitialFoodBlobs()
+    {
+        SpawnFoodBlobs(0, 4, 7f, 12f, 1f);     // große Blobs
+        SpawnFoodBlobs(0, 15, 3f, 6f, 0.8f);   // mittlere Blobs
+        SpawnFoodBlobs(0, 20, 1f, 2.5f, 0.6f); // kleine Blobs
+    }
+
+    private void SpawnFoodBlobs(
+    int foodTypeIndex,
+    int count,
+    float minRadius,
+    float maxRadius,
+    float densityMultiplier
+)
+    {
+        if (foodTypes == null || foodTypeIndex < 0 || foodTypeIndex >= foodTypes.Length)
+            return;
+
+        FoodType foodType = foodTypes[foodTypeIndex];
+
+        for (int i = 0; i < count; i++)
+        {
+            Vector2 center = GetRandomFoodBlobPosition();
+
+            float radius = Random.Range(minRadius, maxRadius);
+
+            ApplyBrush(center, radius, (x, y, falloff) =>
+            {
+                if (obstacleGrid[x, y])
+                    return;
+
+                foodGrid[x, y, foodTypeIndex] = Mathf.Min(
+                    foodType.maxDensity,
+                    foodGrid[x, y, foodTypeIndex] + foodType.maxDensity * densityMultiplier * falloff
+                );
+            });
+        }
+    }
+
+    private Vector2 GetRandomFoodBlobPosition()
+    {
+        float minDistanceToNest = 20f;
+
+        for (int attempt = 0; attempt < 50000000; attempt++)
+        {
+            Vector2 position = GetRandomFreePosition();
+
+            bool tooCloseToNest = false;
+
+            if (nests != null)
+            {
+                for (int i = 0; i < nests.Length; i++)
+                {
+                    if (!nests[i].active)
+                        continue;
+
+                    if (Vector2.Distance(position, nests[i].position) < minDistanceToNest)
+                    {
+                        tooCloseToNest = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!tooCloseToNest)
+                return position;
+        }
+
+        return GetRandomFreePosition();
     }
 
 
@@ -576,7 +646,7 @@ public partial class SimulationManager
 
     private void EatCorpse(ref SlimeAgent agent, RuntimeSpecies dna, float dt)
     {
-        if (agent.energy >= dna.satiationThreshold)
+        if (agent.energy >= dna.energyCapacity * 0.95f)
             return;
 
         if (!dna.canEatCorpses)

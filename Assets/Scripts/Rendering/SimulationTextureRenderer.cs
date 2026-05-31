@@ -86,7 +86,7 @@ public partial class SimulationManager
     private void InitializeFoodRenderer()
     {
         foodTexture = new Texture2D(gridWidth, gridHeight, TextureFormat.RGBA32, false);
-        foodTexture.filterMode = FilterMode.Point;
+        foodTexture.filterMode = FilterMode.Bilinear;
         foodTexture.wrapMode = TextureWrapMode.Clamp;
         foodPixels = new Color[gridWidth * gridHeight];
 
@@ -154,7 +154,7 @@ public partial class SimulationManager
     private void InitializeTrailRenderer()
     {
         trailTexture = new Texture2D(gridWidth, gridHeight, TextureFormat.RGBA32, false);
-        trailTexture.filterMode = FilterMode.Point;
+        trailTexture.filterMode = FilterMode.Bilinear;
         trailTexture.wrapMode = TextureWrapMode.Clamp;
         trailPixels = new Color[gridWidth * gridHeight];
 
@@ -196,28 +196,52 @@ public partial class SimulationManager
             {
                 int index = y * gridWidth + x;
 
-                int dominantSpecies = -1;
-                float strongestTrail = 0f;
+                //int dominantSpecies = -1;
+                //float strongestTrail = 0f;
+
+                //for (int s = 0; s < activeSpeciesCount; s++)
+                //{
+                //    float trail = trailGrid[x, y, s];
+
+                //    if (trail > strongestTrail)
+                //    {
+                //        strongestTrail = trail;
+                //        dominantSpecies = s;
+                //    }
+                //}
+
+                //if (dominantSpecies < 0 || strongestTrail <= 0.001f)
+                //{
+                //    trailPixels[index] = Color.clear;
+                //    continue;
+                //}
+
+                //Color color = runtimeSpecies[dominantSpecies].color;
+                //color.a = Mathf.Clamp01(strongestTrail * trailAlpha);
+
+                float homeTrail = 0f;
+                float foodTrail = 0f;
 
                 for (int s = 0; s < activeSpeciesCount; s++)
                 {
-                    float trail = trailGrid[x, y, s];
+                    if (homeTrailGrid != null)
+                        homeTrail = Mathf.Max(homeTrail, homeTrailGrid[x, y, s]);
 
-                    if (trail > strongestTrail)
-                    {
-                        strongestTrail = trail;
-                        dominantSpecies = s;
-                    }
+                    if (foodTrailGrid != null)
+                        foodTrail = Mathf.Max(foodTrail, foodTrailGrid[x, y, s]);
                 }
 
-                if (dominantSpecies < 0 || strongestTrail <= 0.001f)
-                {
-                    trailPixels[index] = Color.clear;
-                    continue;
-                }
+                Color color = Color.clear;
 
-                Color color = runtimeSpecies[dominantSpecies].color;
-                color.a = Mathf.Clamp01(strongestTrail * trailAlpha);
+                if (homeTrail > 0.005f)
+                    color += Color.blue * Mathf.Clamp01(homeTrail * 4f);
+
+                if (foodTrail > 0.005f)
+                    color += Color.yellow * Mathf.Clamp01(foodTrail * 4f);
+
+                color.a = Mathf.Clamp01(
+                    Mathf.Max(homeTrail, foodTrail) * 3f
+                );
 
                 trailPixels[index] = color;
             }

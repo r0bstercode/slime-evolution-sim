@@ -2,11 +2,31 @@ using UnityEngine;
 
 public partial class SimulationManager
 {
+    private void InitializeNests()
+    {
+        nests = new Nest[maxNests];
+
+        for (int s = 0; s < activeSpeciesCount; s++)
+        {
+            if (s >= maxNests)
+                break;
+
+            nests[s] = new Nest
+            {
+                active = true,
+                position = GetRandomNestPosition(s),
+                speciesIndex = s,
+                storedEnergy = 0f
+            };
+        }
+    }
+
     private void InitializeAgents()
     {
         agents = new SlimeAgent[startingAgentCount];
 
-        int agentIndex = 0;
+        targetSpeciesPopulation = new int[MaxSpecies];
+        spawnedSpeciesPopulation = new int[MaxSpecies];
 
         for (int speciesIndex = 0; speciesIndex < activeSpeciesCount; speciesIndex++)
         {
@@ -17,33 +37,117 @@ public partial class SimulationManager
             if (dna.sourceDNA != null)
                 startCount = dna.sourceDNA.startingPopulation;
 
-            for (int i = 0; i < startCount; i++)
+            targetSpeciesPopulation[speciesIndex] = startCount;
+            spawnedSpeciesPopulation[speciesIndex] = 0;
+        }
+
+        if (!staggerInitialSpawn)
+        {
+            for (int speciesIndex = 0; speciesIndex < activeSpeciesCount; speciesIndex++)
             {
-                if (agentIndex >= agents.Length)
-                    return;
-
-                agents[agentIndex] = new SlimeAgent
+                for (int i = 0; i < targetSpeciesPopulation[speciesIndex]; i++)
                 {
-                    position = GetRandomFreePosition(),
-                    angle = Random.Range(0f, 360f),
-                    speciesIndex = speciesIndex,
-                    age = 0f,
-                    energy = dna.startEnergy,
-                    alive = true,
-                    hp = 1f,
-                    slowTimer = 0f,
-                    slowMultiplier = 1f,
-                    pauseTimer = 0f,
-                    lockedCorpseIndex = -1,
-                    cachedLeftSense = 0f,
-                    cachedForwardSense = 0f,
-                    cachedRightSense = 0f,
-                    senseCacheValid = false
-                };
-
-                agentIndex++;
+                    SpawnAgentFromNest(speciesIndex);
+                }
             }
         }
+    }
+
+    private bool SpawnAgentFromNest(int speciesIndex)
+    {
+        int slot = FindFreeAgentSlot();
+
+        if (slot < 0)
+            return false;
+
+        RuntimeSpecies dna = runtimeSpecies[speciesIndex];
+
+        int nestIndex = FindNestForSpecies(speciesIndex);
+
+        Vector2 spawnPosition = GetRandomFreePosition();
+
+        if (nestIndex >= 0)
+        {
+            spawnPosition =
+                nests[nestIndex].position +
+                Random.insideUnitCircle * nestRadius;
+        }
+
+        if (IsObstacleAt(spawnPosition))
+            spawnPosition = GetRandomFreePosition();
+
+        agents[slot] = new SlimeAgent
+        {
+            position = spawnPosition,
+            angle = Random.Range(0f, 360f),
+            speciesIndex = speciesIndex,
+            age = 0f,
+            energy = dna.startEnergy,
+            alive = true,
+            hp = 1f,
+            slowTimer = 0f,
+            slowMultiplier = 1f,
+            pauseTimer = 0f,
+            lockedCorpseIndex = -1,
+            lockedFoodX = -1,
+            lockedFoodY = -1,
+            lockedFoodType = -1,
+            foodTrailTimer = 0f,
+            foodTrailStrength = 0f,
+
+            mode = AgentMode.Foraging,
+            homeNestIndex = nestIndex,
+
+            cachedLeftSense = 0f,
+            cachedForwardSense = 0f,
+            cachedRightSense = 0f,
+            senseCacheValid = false
+        };
+
+        return true;
+    }
+
+    private void AssignAgentsToNests()
+    {
+        if (nests == null || agents == null)
+            return;
+
+        for (int i = 0; i < agents.Length; i++)
+        {
+            if (!agents[i].alive)
+                continue;
+
+            int speciesIndex = agents[i].speciesIndex;
+
+            for (int n = 0; n < nests.Length; n++)
+            {
+                if (!nests[n].active)
+                    continue;
+
+                if (nests[n].speciesIndex != speciesIndex)
+                    continue;
+
+                agents[i].homeNestIndex = n;
+                break;
+            }
+        }
+    }
+
+    private int FindNestForSpecies(int speciesIndex)
+    {
+        if (nests == null)
+            return -1;
+
+        for (int i = 0; i < nests.Length; i++)
+        {
+            if (!nests[i].active)
+                continue;
+
+            if (nests[i].speciesIndex == speciesIndex)
+                return i;
+        }
+
+        return -1;
     }
 
     private Vector2 GetRandomFreePosition()
@@ -62,18 +166,66 @@ public partial class SimulationManager
         return Vector2.zero;
     }
 
+    private Vector2 GetRandomNestPosition(int speciesIndex)
+    {
+        float margin = 12f;
+        float minNestDistance = 25f;
+
+        for (int attempt = 0; attempt < 200; attempt++)
+        {
+            Vector2 position = new Vector2(
+                Random.Range(-simulationArea.x * 0.5f + margin, simulationArea.x * 0.5f - margin),
+                Random.Range(-simulationArea.y * 0.5f + margin, simulationArea.y * 0.5f - margin)
+            );
+
+            if (IsObstacleAt(position))
+                continue;
+
+            bool tooClose = false;
+
+            for (int i = 0; i < nests.Length; i++)
+            {
+                if (!nests[i].active)
+                    continue;
+
+                if (Vector2.Distance(position, nests[i].position) < minNestDistance)
+                {
+                    tooClose = true;
+                    break;
+                }
+            }
+
+            if (!tooClose)
+                return position;
+        }
+
+        return GetRandomFreePosition();
+    }
+
     private void ResetSimulation()
     {
         trailGrid = new float[gridWidth, gridHeight, MaxSpecies];
         nextTrailGrid = new float[gridWidth, gridHeight, MaxSpecies];
+        homeTrailGrid = new float[gridWidth, gridHeight, MaxSpecies];
+        nextHomeTrailGrid = new float[gridWidth, gridHeight, MaxSpecies];
+        homeDistanceGrid = new float[gridWidth, gridHeight, MaxSpecies];
+        nextHomeDistanceGrid = new float[gridWidth, gridHeight, MaxSpecies];
+
+        foodTrailGrid = new float[gridWidth, gridHeight, MaxSpecies];
+        nextFoodTrailGrid = new float[gridWidth, gridHeight, MaxSpecies];
+
         obstacleGrid = new bool[gridWidth, gridHeight];
         InitializeObstacles();
 
         foodGrid = new float[gridWidth, gridHeight, foodTypes.Length];
-        InitializeFood();
+        
         dangerGrid = new float[gridWidth, gridHeight];
         nextDangerGrid = new float[gridWidth, gridHeight];
+
+        InitializeNests();
+        InitializeFood();
         InitializeAgents();
+        AssignAgentsToNests();
         corpses = new Corpse[maxCorpses];
         corpseGrid = new float[gridWidth, gridHeight];
         preyGrid = new float[gridWidth, gridHeight, MaxSpecies];
@@ -271,4 +423,8 @@ public partial class SimulationManager
         if (populationGraphIndex >= populationGraphSamples)
             populationGraphIndex = 0;
     }
+
+    
+
+    
 }

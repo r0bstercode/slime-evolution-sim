@@ -1,5 +1,13 @@
 using UnityEngine;
 
+public enum AgentMode
+{
+    Foraging,
+    ReturningHome,
+    RestingAtNest,
+    EatingFood,
+}
+
 [System.Serializable]
 public struct SlimeAgent
 {
@@ -11,9 +19,17 @@ public struct SlimeAgent
     public float energy;
     public bool alive;
 
+    public AgentMode mode;
+    public int homeNestIndex;
+
     public float pauseTimer;
 
     public int lockedCorpseIndex;
+    public int lockedFoodX;
+    public int lockedFoodY;
+    public int lockedFoodType;
+    public float foodTrailTimer;
+    public float foodTrailStrength;
 
     public float hp;
     public float slowTimer;

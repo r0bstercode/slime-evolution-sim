@@ -473,6 +473,9 @@ MonoBehaviour:
   agentUpdateStride: 2
   foodUpdateStripes: 4
   showTrails: 1
+  homeTrailDecayRate: 0.02
+  foodTrailDecayRate: 0.01
+  navTrailDiffusionRate: 0.5
   mutationEnabled: 0
   mutationStrength: 0.05
   speciationThreshold: 1.5
@@ -487,10 +490,18 @@ MonoBehaviour:
   worldAge: 0
   simulationSpeed: 1
   panicMode: 0
+  maxNests: 32
+  nestRadius: 3
+  nestReturnEnergyThreshold: 100
+  nestRestTime: 1
+  staggerInitialSpawn: 1
+  nestSpawnInterval: 0.05
+  nestSpawnBatchSize: 2
+  initialSpawnEveryNSimTicks: 30
+  nestSpawnEnergyCost: 120
+  nestReproductionInterval: 1
+  nestMaxAgentsPerSpecies: 2000
   fixedSimulationDt: 0.02
-  deathDecayConversion: 0.8
-  decayGrowthBoost: 0.02
-  brownDecayLoss: 0.01
   randomObstaclesEnabled: 1
   randomObstacleBlobCount: 12
   randomObstacleBlobRadius: 8
@@ -502,22 +513,14 @@ MonoBehaviour:
   populationGraphHeight: 90
   maxCorpses: 5000
   corpseDecayRate: 2
-  corpseBodyEnergyMultiplier: 0.5
-  minimumCorpseEnergy: 20
   corpseEatAmount: 0.25
-  corpseEnergyValue: 1
-  corpseScavengerThreshold: 1.5
   mutationCooldownPerSpecies: 5
   speciesSpeciationCooldown: 60
   globalSpeciationCooldown: 10
   founderEnergyMultiplier: 5
   founderExtraCount: 3
   preyScavengerThreshold: 1.5
-  preySmellRadiusMultiplier: 1.5
   preyAttackRange: 0.6
-  preyAttackAmount: 25
-  preyKillThreshold: 5
-  preyEnergyValue: 0.35
   preyAttackEnergyCost: 0.2
   preyAttackDamage: 25
   preyAttackSlowDuration: 0.8
@@ -528,7 +531,6 @@ MonoBehaviour:
   trailDiffusionRate: 4
   initialFoodAmount: 0.03
   foodGrowthRate: 0.02
-  foodGain: 5
   foodEatAmount: 0.5
   sunlightEnergyPerSecond: 500
   maxEcoEnergy: 600000

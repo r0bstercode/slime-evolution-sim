@@ -125,7 +125,7 @@ public partial class SimulationManager
 
             foodGrid[x, y, foodTypeIndex] = Mathf.Min(
                 foodType.maxDensity,
-                foodGrid[x, y, foodTypeIndex] + strength * falloff * Time.deltaTime
+                foodGrid[x, y, foodTypeIndex] + strength * falloff
             );
         });
     }
@@ -219,10 +219,17 @@ public partial class SimulationManager
                 energy = runtimeSpecies[speciesIndex].startEnergy,
                 alive = true,
                 lockedCorpseIndex = -1,
+                lockedFoodX = -1,
+                lockedFoodY = -1,
+                lockedFoodType = -1,
                 pauseTimer = 0f,
                 hp = 1f,
                 slowTimer = 0f,
                 slowMultiplier = 1f,
+                mode = AgentMode.Foraging,
+                homeNestIndex = -1,
+                foodTrailTimer = 0f,
+                foodTrailStrength = 0f,
 
 
                 cachedLeftSense = 0f,

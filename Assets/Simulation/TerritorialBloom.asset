@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: TerritorialBloom
   m_EditorClassIdentifier: Assembly-CSharp::SpeciesDNA
   speed: 1
-  turnSpeed: 90
-  sensorDistance: 7
-  sensorAngle: 35
-  trailStrength: 1.8
-  ownTrailAttraction: 0.5
+  turnSpeed: 540
+  sensorDistance: 8
+  sensorAngle: 120
+  trailStrength: 1.3
+  ownTrailAttraction: 0.2
   foreignTrailRepulsion: 1.2
-  maxAge: 1500
+  maxAge: 1000
   startEnergy: 40
   startingPopulation: 1500
   movementEnergyCost: 0.012
@@ -33,4 +33,4 @@ MonoBehaviour:
   reproductionThreshold: 100
   mutationChance: 0.02
   minReproductionAge: 20
-  speciesColor: {r: 0.21176471, g: 0.4196079, b: 0.12156863, a: 1}
+  speciesColor: {r: 0.3443841, g: 0.60336345, b: 0.6698113, a: 1}

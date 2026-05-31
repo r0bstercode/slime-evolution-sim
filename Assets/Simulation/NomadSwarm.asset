@@ -16,10 +16,10 @@ MonoBehaviour:
   turnSpeed: 150
   sensorDistance: 12
   sensorAngle: 45
-  trailStrength: 1.4
+  trailStrength: 1
   ownTrailAttraction: 0.1
   foreignTrailRepulsion: 0
-  maxAge: 1200
+  maxAge: 1
   startEnergy: 50
   startingPopulation: 500
   movementEnergyCost: 0.035
@@ -33,4 +33,4 @@ MonoBehaviour:
   reproductionThreshold: 180
   mutationChance: 0.02
   minReproductionAge: 30
-  speciesColor: {r: 0.6698113, g: 0.3467074, b: 0.078987174, a: 1}
+  speciesColor: {r: 0.7924528, g: 0.39248842, b: 0.74568945, a: 1}

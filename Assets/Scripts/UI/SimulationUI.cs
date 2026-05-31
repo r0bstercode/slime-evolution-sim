@@ -275,7 +275,7 @@ public partial class SimulationManager
         GUI.backgroundColor = oldBg;
 
         food.growthRate = DrawCompactFloatEditor("Rate", "E/s", food.growthRate, food.growthRate, 0.02f, 0f, 1f);
-        food.energyValue = DrawCompactFloatEditor("Value", "E", food.energyValue, food.energyValue, 0.1f, 0f, 100f);
+        food.energyValue = DrawCompactFloatEditor("Scent", "x", food.energyValue, food.energyValue, 0.1f, 0f, 100f);
     }
 
     private void DrawToolsPanel(GUIStyle style)

@@ -20,6 +20,15 @@ public struct Corpse
     public int speciesIndex;
 }
 
+[System.Serializable]
+public struct Nest
+{
+    public bool active;
+    public Vector2 position;
+    public int speciesIndex;
+    public float storedEnergy;
+}
+
 public partial class SimulationManager : MonoBehaviour
 {
     [Header("Species")]
@@ -50,6 +59,13 @@ public partial class SimulationManager : MonoBehaviour
     private int foodStripeIndex = 0;
     public bool showTrails = true;
 
+    [Header("Navigation Trails")]
+    public float homeTrailDecayRate = 0.0002f;
+    public float foodTrailDecayRate = 0.5f;
+    public float navTrailDiffusionRate = 0.1f;
+    private int navTrailUpdateTick = 0;
+    public int navTrailUpdateEveryNSteps = 8;
+
 
     [Header("Evolution")]
     public bool mutationEnabled = false;
@@ -73,6 +89,33 @@ public partial class SimulationManager : MonoBehaviour
     public float worldAge = 0f;
     public float simulationSpeed = 1f;
     public bool panicMode = false;
+
+    [Header("Nests")]
+    public int maxNests = 32;
+    public float nestRadius = 2.5f;
+    public float nestReturnEnergyThreshold = 100f;
+    public float nestRestTime = 2f;
+
+    private Nest[] nests;
+
+    [Header("Nest Spawning")]
+    public bool staggerInitialSpawn = true;
+    public float nestSpawnInterval = 100f;
+    public int nestSpawnBatchSize = 1;
+
+    private int[] targetSpeciesPopulation;
+    private int[] spawnedSpeciesPopulation;
+    private float nestSpawnTimer = 0f;
+
+    public int initialSpawnEveryNSimTicks = 30;
+    private int initialSpawnTick = 1;
+
+    [Header("Nest Reproduction")]
+    public float nestSpawnEnergyCost = 120f;
+    public float nestReproductionInterval = 1f;
+    public int nestMaxAgentsPerSpecies = 2000;
+
+    private float nestReproductionTimer = 0f;
 
     [Header("Simulation Speed")]
     public float fixedSimulationDt = 0.02f;
@@ -197,13 +240,16 @@ public partial class SimulationManager : MonoBehaviour
     [Header("Trail Grid")]
     public int gridWidth = 200;
     public int gridHeight = 200;
-    public float trailDecayRate = 0.25f;
+    public float trailDecayRate = 2f;
     public float trailDiffusionRate = 4f;
+    private float[,,] homeDistanceGrid;
+    private float[,,] nextHomeDistanceGrid;
+
 
     [Header("Food Grid")]
     public float initialFoodAmount = 0.45f;
     public float foodGrowthRate = 0.02f;
-    public float foodEatAmount = 10f;
+    public float foodEatAmount = 100f;
     private float[,,] preyGrid;
     private float[,] totalPreyGrid;
 
@@ -236,6 +282,12 @@ public partial class SimulationManager : MonoBehaviour
     private float[,] dangerGrid;
     private float[,] nextDangerGrid;
 
+    private float[,,] homeTrailGrid;
+    private float[,,] nextHomeTrailGrid;
+
+    private float[,,] foodTrailGrid;
+    private float[,,] nextFoodTrailGrid;
+
 
     public float agentDrawSize = 0.06f;
     public float foodAlpha = 0.18f;
@@ -245,7 +297,7 @@ public partial class SimulationManager : MonoBehaviour
     [Header("Mouse Tools")]
     public ToolMode currentTool = ToolMode.None;
     public float brushRadius = 3f;
-    public float brushStrength = 2f;
+    public float brushStrength = 500f;
     public bool mouseToolsEnabled = true;
     public float brushScrollSpeed = 1f;
 
@@ -282,6 +334,15 @@ public partial class SimulationManager : MonoBehaviour
         trailGrid = new float[gridWidth, gridHeight, MaxSpecies];
         nextTrailGrid = new float[gridWidth, gridHeight, MaxSpecies];
 
+        homeTrailGrid = new float[gridWidth, gridHeight, MaxSpecies];
+        nextHomeTrailGrid = new float[gridWidth, gridHeight, MaxSpecies];
+
+        homeDistanceGrid = new float[gridWidth, gridHeight, MaxSpecies];
+        nextHomeDistanceGrid = new float[gridWidth, gridHeight, MaxSpecies];
+
+        foodTrailGrid = new float[gridWidth, gridHeight, MaxSpecies];
+        nextFoodTrailGrid = new float[gridWidth, gridHeight, MaxSpecies];
+
         obstacleGrid = new bool[gridWidth, gridHeight];
         InitializeObstacles();
         obstaclesDirty = true;
@@ -293,7 +354,9 @@ public partial class SimulationManager : MonoBehaviour
         nextDangerGrid = new float[gridWidth, gridHeight];
         InitializeFood();
 
+        InitializeNests();
         InitializeAgents();
+        AssignAgentsToNests();
 
         corpses = new Corpse[maxCorpses];
         corpseGrid = new float[gridWidth, gridHeight];
@@ -359,6 +422,7 @@ public partial class SimulationManager : MonoBehaviour
                 if ((Time.frameCount + step) % trailUpdateEveryNFrames == 0)
                 {
                     DiffuseAndDecayTrails(dt);
+                    DiffuseNavigationTrails(dt);
                     DiffuseAndDecayDanger(dt);
                 }
 
@@ -423,9 +487,12 @@ public partial class SimulationManager : MonoBehaviour
 
             UpdateFoodTexture();
             UpdateTrailTexture();
+            DiffuseNavigationTrails(fixedSimulationDt);
             UpdateObstacleTexture();
             UpdateAgentTexture();
-
+            UpdateNestReproduction(Time.deltaTime);
+            UpdateInitialNestSpawning();
+            DepositNestHomeTrails(fixedSimulationDt);
 
             perfRefreshTimer += Time.unscaledDeltaTime;
 
@@ -445,6 +512,36 @@ public partial class SimulationManager : MonoBehaviour
             }
         }
         
+    }
+
+    private void UpdateInitialNestSpawning()
+    {
+        if (!staggerInitialSpawn)
+            return;
+
+        if (targetSpeciesPopulation == null ||
+            spawnedSpeciesPopulation == null)
+            return;
+
+        initialSpawnTick++;
+
+        if (initialSpawnTick % initialSpawnEveryNSimTicks != 0)
+            return;
+
+        for (int s = 0; s < activeSpeciesCount; s++)
+        {
+            if (spawnedSpeciesPopulation[s] >= targetSpeciesPopulation[s])
+                continue;
+
+            for (int b = 0; b < nestSpawnBatchSize; b++)
+            {
+                if (spawnedSpeciesPopulation[s] >= targetSpeciesPopulation[s])
+                    break;
+
+                if (SpawnAgentFromNest(s))
+                    spawnedSpeciesPopulation[s]++;
+            }
+        }
     }
 
 }

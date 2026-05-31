@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: GlowFungus
   m_EditorClassIdentifier: Assembly-CSharp::SpeciesDNA
   speed: 1.5
-  turnSpeed: 90
-  sensorDistance: 7
-  sensorAngle: 35
-  trailStrength: 1.4
-  ownTrailAttraction: 0.5
+  turnSpeed: 360
+  sensorDistance: 9
+  sensorAngle: 120
+  trailStrength: 1.1
+  ownTrailAttraction: 0.2
   foreignTrailRepulsion: 0.6
-  maxAge: 1500
+  maxAge: 1000
   startEnergy: 40
   startingPopulation: 1500
   movementEnergyCost: 0.008
@@ -33,4 +33,4 @@ MonoBehaviour:
   reproductionThreshold: 120
   mutationChance: 0.02
   minReproductionAge: 15
-  speciesColor: {r: 0.16470589, g: 0.15686275, b: 0.6117647, a: 1}
+  speciesColor: {r: 0.5379202, g: 0.3176471, b: 0.8509804, a: 1}

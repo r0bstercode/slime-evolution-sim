@@ -24,4 +24,35 @@ public partial class SimulationManager
         Gizmos.color = GetToolColor();
         Gizmos.DrawWireSphere(center, brushRadius);
     }
+
+    private void OnDrawGizmos()
+    {
+        DrawBrushPreview();
+        DrawNestGizmos();
+    }
+
+    private void DrawNestGizmos()
+    {
+        if (nests == null || runtimeSpecies == null)
+            return;
+
+        for (int i = 0; i < nests.Length; i++)
+        {
+            if (!nests[i].active)
+                continue;
+
+            Color color = Color.white;
+
+            int s = nests[i].speciesIndex;
+            if (s >= 0 && s < activeSpeciesCount && runtimeSpecies[s] != null)
+                color = runtimeSpecies[s].color;
+
+            color.a = 1f;
+            Gizmos.color = color;
+
+            Gizmos.DrawWireSphere(nests[i].position, nestRadius);
+            Gizmos.DrawSphere(nests[i].position, 0.35f);
+        }
+    }
+
 }

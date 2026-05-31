@@ -5,7 +5,7 @@ public class SpeciesDNA : ScriptableObject
 {
     [Header("Movement")]
     public float speed = 2f;
-    public float turnSpeed = 90f;
+    public float turnSpeed = 360;
 
     [Header("Sensors")]
     public float sensorDistance = 1.5f;
